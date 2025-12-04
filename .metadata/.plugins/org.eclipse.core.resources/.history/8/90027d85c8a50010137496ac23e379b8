@@ -1,0 +1,25 @@
+
+package com.example.creational.designpattern;
+
+public class NotificationFactory {
+    public static Notification createNotification(String type) {
+        switch (type.toUpperCase()) {
+            case "EMAIL":
+            {
+                return new EmailNotification();
+                break;
+            }
+            case "SMS":
+            {
+                return new SMSNotification();
+                break;
+            }
+            default:
+                throw new IllegalArgumentException("Unknown notification type: " + type);
+        }
+    }
+    public static void main(String[]args) {
+    	NotificationFactory notificationFactory  = new NotificationFactory();
+    	notificationFactory.createNotification("email");
+    }
+}

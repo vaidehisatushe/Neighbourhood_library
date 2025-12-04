@@ -1,0 +1,27 @@
+package java_core_interview_practice;
+
+public class ReverseArray {
+
+	public static void main(String[] args) {
+
+		int[] inputArray = { 1, 2, 3, 4 };
+		
+		ArrayImp r = new ArrayImp();
+		
+		r.reverseArray(inputArray);
+
+	}
+
+	public void reverseArray(int[] reverseArray) {
+
+		int left = 0, right = reverseArray.length - 1;
+		while (left < right) {
+			int temp = reverseArray[left];
+			reverseArray[left] = reverseArray[right];
+			reverseArray[right] = temp;
+			left++;
+			right--;
+		}
+	}
+
+}

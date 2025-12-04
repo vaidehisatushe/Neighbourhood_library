@@ -1,0 +1,17 @@
+package com.example.demo;
+
+import org.springframework.stereotype.Component;
+
+@Component
+public class MyFirstClass {
+	
+	public MyFirstClass() {
+		// TODO Auto-generated constructor stub
+	System.out.println("In Construtor Injection..");
+	}
+	public String sayhello() {
+		String s = "Saying hello from myFirstClass...";
+		return s;
+	}
+
+}

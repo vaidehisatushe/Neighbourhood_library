@@ -1,0 +1,26 @@
+/**
+ * 
+ */
+package java_core_interview_practice;
+
+/**
+ * 
+ */
+public class StringTokenizerExample {
+
+	/**
+	 * 
+	 */
+	public StringTokenizerExample() {
+		// TODO Auto-generated constructor stub
+	}
+
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+
+	}
+
+}

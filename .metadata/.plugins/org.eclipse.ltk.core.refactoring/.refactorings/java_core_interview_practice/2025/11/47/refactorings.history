@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring accessors="true" comment="Delete 2 elements from project &apos;java_core_interview_practice&apos;&#x0D;&#x0A;- Original project: &apos;java_core_interview_practice&apos;&#x0D;&#x0A;- Original elements:&#x0D;&#x0A;     LRUCache&#x0D;&#x0A;     Updatesql" description="Delete elements" element1="src/java_core_interview_practice/LRUCache" element2="src/java_core_interview_practice/Updatesql" elements="0" flags="589830" id="org.eclipse.jdt.ui.delete" resources="2" stamp="1763725932357" subPackages="false" version="1.0"/>
+</session>

@@ -1,0 +1,54 @@
+package java_core_interview_practice;
+
+public class ArrayImp {
+
+	public static void main(String[] args) {
+
+		int[] inputArray = { 1, 2, 3, 4 };
+
+		ArrayImp r = new ArrayImp();
+
+		r.reverseArray(inputArray);
+		
+		String palindrome = "ASD";
+		
+		boolean is_palindrome = r.isPalindrome(palindrome);
+
+	}
+
+	public void reverseArray(int[] reverseArray) {
+
+		int left = 0, right = reverseArray.length - 1;
+		while (left < right) {
+			int temp = reverseArray[left];
+			reverseArray[left] = reverseArray[right];
+			reverseArray[right] = temp;
+			left++;
+			right--;
+		}
+	}
+
+	boolean isPangram(String sentence) {
+		boolean[] found = new boolean[26];
+		for (char c : sentence.toLowerCase().toCharArray()) {
+			if (c >= 'a' && c <= 'z')
+				found[c - 'a'] = true;
+		}
+		for (boolean f : found)
+			if (!f)
+				return false;
+		return true;
+	}
+
+	boolean isPalindrome(String s) {
+		int left = 0, right = s.length() - 1;
+		while (left < right) {
+			if (s.charAt(left) != s.charAt(right))
+				return false;
+			left++;
+			right--;
+		}
+		return true;
+	}
+
+}

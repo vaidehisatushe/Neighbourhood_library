@@ -1,0 +1,18 @@
+package com.example.demo;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.stereotype.Component;
+
+@Component
+public class MyFirstClass {
+	
+	public MyFirstClass() {
+	System.out.println("In Construtor Injection..");
+	}
+	@Bean
+	public String methodInjection() {
+		String s = "Saying hello from myFirstClass...";
+		return s;
+	}
+
+}

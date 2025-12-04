@@ -1,0 +1,7 @@
+NOTE: automatic generation of Python protobuf files failed.
+Attempted command: python -m grpc_tools.protoc -I/mnt/data/neighborhood-library/protos --python_out=/mnt/data/neighborhood-library/server --grpc_python_out=/mnt/data/neighborhood-library/server /mnt/data/neighborhood-library/protos/library.proto
+Output / Error:
+/usr/local/bin/python3: Error while finding module specification for 'grpc_tools.protoc' (ModuleNotFoundError: No module named 'grpc_tools')
+
+
+To fix: install grpcio-tools in your environment and run the above command, or run the provided server/generate_protos.sh script inside the container where grpc_tools is available.

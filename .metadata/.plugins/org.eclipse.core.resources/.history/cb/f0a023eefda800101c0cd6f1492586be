@@ -1,0 +1,10 @@
+package repository;
+
+import java.util.Optional;
+
+import entity.Parcel;
+
+//src/main/java/com/example/parcel/repository/ParcelRepository.java
+public interface ParcelRepository extends JpaRepository<Parcel, Long> {
+ Optional<Parcel> findByTrackingNumber(String trackingNumber);
+}

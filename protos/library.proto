@@ -1,0 +1,78 @@
+syntax = "proto3";
+package library;
+
+import "google/protobuf/timestamp.proto";
+
+// Book message represents a book entity in the library system.
+message Book {
+  int32 id = 1;
+  string isbn = 2;
+  string title = 3;
+  string author = 4;
+  string publisher = 5;
+  google.protobuf.Timestamp published_date = 6;
+}
+
+// Member message represents a library member.
+message Member {
+  int32 id = 1;
+  string name = 2;
+  string email = 3;
+  string phone = 4;
+  string address = 5;
+}
+
+// Borrowing message represents a borrow/return record.
+message Borrowing {
+  int32 id = 1;
+  int32 book_id = 2;
+  int32 member_id = 3;
+  google.protobuf.Timestamp borrowed_at = 4;
+  google.protobuf.Timestamp due_at = 5;
+  google.protobuf.Timestamp returned_at = 6;
+  string status = 7;
+}
+
+// Request/response messages for CRUD and borrowing operations.
+message CreateBookRequest { Book book = 1; }
+message CreateBookResponse { Book book = 1; }
+message UpdateBookRequest { Book book = 1; }
+message UpdateBookResponse { Book book = 1; }
+
+message CreateMemberRequest { Member member = 1; }
+message CreateMemberResponse { Member member = 1; }
+message UpdateMemberRequest { Member member = 1; }
+message UpdateMemberResponse { Member member = 1; }
+
+message BorrowBookRequest {
+  int32 book_id = 1;
+  int32 member_id = 2;
+  google.protobuf.Timestamp due_at = 3;
+}
+message BorrowBookResponse { Borrowing borrowing = 1; }
+
+message ReturnBookRequest { int32 borrowing_id = 1; }
+message ReturnBookResponse { Borrowing borrowing = 1; }
+
+message ListBorrowedByMemberRequest { int32 member_id = 1; }
+message ListBorrowedByMemberResponse { repeated Borrowing borrowings = 1; }
+
+message ListMembersRequest { }
+message ListMembersResponse { repeated Member members = 1; }
+
+message ListBooksRequest { }
+message ListBooksResponse { repeated Book books = 1; }
+
+
+// The LibraryService defines the gRPC endpoints for library operations.
+service LibraryService {
+  rpc CreateBook(CreateBookRequest) returns (CreateBookResponse);
+  rpc UpdateBook(UpdateBookRequest) returns (UpdateBookResponse);
+  rpc CreateMember(CreateMemberRequest) returns (CreateMemberResponse);
+  rpc UpdateMember(UpdateMemberRequest) returns (UpdateMemberResponse);
+  rpc BorrowBook(BorrowBookRequest) returns (BorrowBookResponse);
+  rpc ReturnBook(ReturnBookRequest) returns (ReturnBookResponse);
+  rpc ListBorrowedByMember(ListBorrowedByMemberRequest) returns (ListBorrowedByMemberResponse);
+  rpc ListBooks(ListBooksRequest) returns (ListBooksResponse);
+  rpc ListMembers(ListMembersRequest) returns (ListMembersResponse);
+}

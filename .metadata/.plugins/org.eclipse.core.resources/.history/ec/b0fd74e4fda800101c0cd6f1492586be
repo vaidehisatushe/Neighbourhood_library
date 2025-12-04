@@ -1,0 +1,9 @@
+package repository;
+
+public class ParcelRepository {
+
+	public ParcelRepository() {
+		// TODO Auto-generated constructor stub
+	}
+
+}

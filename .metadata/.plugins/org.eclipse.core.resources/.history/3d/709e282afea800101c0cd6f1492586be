@@ -1,0 +1,5 @@
+public class ParcelRequest {
+    private String customerName;
+    private String address;
+    // Getters, setters
+}

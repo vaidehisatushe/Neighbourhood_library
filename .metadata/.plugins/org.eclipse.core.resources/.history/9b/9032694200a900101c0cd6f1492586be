@@ -1,0 +1,6 @@
+package entity;
+
+//src/main/java/com/example/parcel/entity/ParcelStatus.java
+public enum ParcelStatus {
+	BOOKED, PICKED_UP, IN_TRANSIT, OUT_FOR_DELIVERY, DELIVERED
+}

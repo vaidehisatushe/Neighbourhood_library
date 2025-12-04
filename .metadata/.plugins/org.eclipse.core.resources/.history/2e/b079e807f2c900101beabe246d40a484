@@ -1,0 +1,56 @@
+/**
+ * 
+ */
+package java_core_interview_practice;
+
+/**
+ * 
+ */
+public class PowerComputation {
+
+	/**
+	 * 
+	 */
+
+	public int power(int base, int exponent) {
+		if (exponent == 0) {
+			return 1;
+		} else if (exponent < 0) {
+			return 0; // For simplicity, returning 0 for negative exponents
+		} else {
+			int result = 1;
+			for (int i = 1; i <= exponent; i++) {
+				result *= base;
+			}
+			return result;
+		}
+	}
+
+	public PowerComputation() {
+		// TODO Auto-generated constructor stub
+	}
+
+	public int powercompute(int number, int exp) {
+
+		int result = 1;
+
+		if (exp == 0 || exp == 1) {
+			result = number;
+		} else {
+			for (int i = 0; i < exp; i++) {
+				result *= number;
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		PowerComputation pc = new PowerComputation();
+		System.out.println("compute " + pc.powercompute(2, 4));
+	}
+
+}

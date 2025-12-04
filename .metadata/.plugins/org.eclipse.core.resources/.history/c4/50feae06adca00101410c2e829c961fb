@@ -1,0 +1,41 @@
+/**
+ * 
+ */
+package java_core_interview_practice;
+
+import java.util.StringTokenizer;
+
+/**
+ * 
+ */
+public class StringTokenizerExample {
+	
+	protected String orignalString  = " I am working at abc. working for abc feels great here ";
+
+	/**
+	 * 
+	 */
+	public String StringtoReplace(String orignalString) {
+		
+		String resultString = orignalString;
+		
+		 StringTokenizer st = new StringTokenizer(resultString);
+	     while (st.hasMoreTokens()) {
+	         System.out.println(st.nextToken());
+	     }
+		
+		return resultString; 
+	}
+	public StringTokenizerExample() {
+		// TODO Auto-generated constructor stub
+	}
+
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+
+	}
+
+}

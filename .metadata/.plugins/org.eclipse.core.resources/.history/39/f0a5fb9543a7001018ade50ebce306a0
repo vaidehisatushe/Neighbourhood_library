@@ -1,0 +1,35 @@
+/**
+ * 
+ */
+package java_core_interview_practice;
+
+import java.util.function.BiFunction;
+
+/**
+ * 
+ */
+public class Java8_feature {
+
+	/**
+	 * 
+	 */
+	public Java8_feature() {
+		// TODO Auto-generated constructor stub
+	}
+
+	public static void lambdaAddition(int input1, int input2) {
+		BiFunction<Integer, Integer, Integer> add = (a, b) -> a + b;
+		System.out.println(add.apply(5, 3)); // Output: 8
+	}
+
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		// Lambda Expressions: Enable functional programming syntax.
+		Runnable lambdaRunnable = () -> System.out.println("Running...");
+
+	}
+
+}

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring clone="true" comment="Infer generic type arguments on &apos;java_core_interview_practice&apos;&#x0D;&#x0A;- Original project: &apos;java_core_interview_practice&apos;&#x0D;&#x0A;- Original elements:&#x0D;&#x0A;     java_core_interview_practice.ArrayListExample.java&#x0D;&#x0A;- Assume clone() returns an instance of the receiver type&#x0D;&#x0A;- Leave unconstrained type arguments raw" description="Infer generic type arguments" element1="/src&lt;java_core_interview_practice{ArrayListExample.java" flags="6" id="org.eclipse.jdt.ui.infer.typearguments" leave="true" stamp="1759576775482" version="1.0"/>
+</session>

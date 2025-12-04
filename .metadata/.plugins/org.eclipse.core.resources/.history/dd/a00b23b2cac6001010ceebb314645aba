@@ -1,0 +1,75 @@
+/**
+ * 
+ */
+package java_core_interview_practice;
+
+import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.LinkedHashMap;
+
+/**
+ * 
+ */
+public class LRUCache {
+	
+	LRUCache(int capacity) Initialize the LRU cache with positive size capacity.
+
+	int get(int key) Return the value of the key if the key exists, otherwise return -1.
+	void put(int key, int value) Update the value of the key if the key exists.
+	Otherwise, add the key-value pair to the cache. If the number of keys exceeds the capacity from this operation, evict the least recently used key.
+			
+	/**
+	 * 
+	 */
+	public LRUCache() {
+		// TODO Auto-generated constructor stub
+				
+	}
+	
+	public int get(int key) {
+		// TODO Auto-generated method stub
+		
+		int maxCapacity = 5;
+		
+		HashMap<Integer, Integer> map = new HashMap<>(); 
+		map.get(key);
+		
+		if(maxCapacity <= 0) {
+			return -1;
+		}
+		if(maxCapacity > 0 && map.containsKey(key)) {
+			return map.get(key);
+		}
+		 else  {
+			return -1;
+		}
+		
+		return 0;
+	}
+	
+	public void put(int key, int value) {
+		// TODO Auto-generated method stub
+		
+		LinkedHashMap<Integer, Integer> map = new LinkedHashMap<>();
+		if(map.size() >= 5 && !map.containsKey(key)) {
+			//remove least recently used
+			Integer firstKey = map.keySet().iterator().next();
+			map.remove(firstKey);
+			
+		}
+		else if(map.containsKey(key)) {
+			map.remove(key);
+		}
+		map.put(key, value);
+		
+	}
+	
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+
+	}
+
+}

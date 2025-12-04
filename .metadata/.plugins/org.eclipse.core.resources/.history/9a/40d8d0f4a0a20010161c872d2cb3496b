@@ -1,0 +1,13 @@
+package com.example.demo;
+
+import org.springframework.stereotype.Component;
+
+@Component
+public class MyFirstClass {
+
+	public String sayhello() {
+		String s = "Saying hello from myFirstClass...";
+		return s;
+	}
+
+}

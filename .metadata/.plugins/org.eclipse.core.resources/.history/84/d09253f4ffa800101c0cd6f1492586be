@@ -1,0 +1,29 @@
+package entity;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import org.hibernate.annotations.Generated;
+import org.hibernate.annotations.Table;
+
+import entity.ParcelStatus;
+import lombok.AllArgsConstructor;
+
+@Data // Combines @Getter, @Setter, @RequiredArgsConstructor, @ToString, @EqualsAndHashCode
+@NoArgsConstructor // Generates a no-argument constructor
+@AllArgsConstructor // Generates a constructor with all fields as arguments
+@Table(name = "parcels", appliesTo = "")
+public class Parcel {
+	@Id
+	@lombok.Generated(strategy = Generated.IDENTITY)
+	private Long id;
+	private String trackingNumber;
+	private String customerName;
+	private String address;
+	@Enumerated(EnumType.STRING)
+	private ParcelStatus status;
+	private LocalDateTime createdAt;
+	// Getters, setters, constructors
+}
+
+

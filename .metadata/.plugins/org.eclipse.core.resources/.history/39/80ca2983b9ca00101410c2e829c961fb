@@ -1,0 +1,53 @@
+/**
+ * 
+ */
+package java_core_interview_practice;
+
+import java.util.StringTokenizer;
+
+/**
+ * 
+ */
+public class StringTokenizerExample {
+
+	protected static String orignalString = " I am working at abc. working for abc feels great here ";
+
+	/**
+	 * 
+	 */
+	public static String StringtoReplace(String orignalString) {
+
+		String OrignalString = orignalString;
+		String resultString = "";
+		
+		StringBuffer strbuffer = new StringBuffer();
+        String tobereplace = "abc";
+        String tobereplacedby = "Amazon";
+		
+        StringTokenizer st = new StringTokenizer(OrignalString);
+		while (st.hasMoreTokens()) {
+			if(st.nextToken()!=null && st.nextToken()!="") {
+				String temp  = st.nextToken();
+				if(temp.equalsIgnoreCase(tobereplace)) {
+					st.nextToken().replace(temp, tobereplace);
+					strbuffer.replace(0, 3, resultString)
+					strbuffer.append(st.nextToken());
+				}
+			}
+		}
+		resultString = strbuffer.toString();
+		
+
+		return resultString;
+	}
+
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		StringTokenizerExample stringTokenizerExample = new StringTokenizerExample();
+		System.out.print(stringTokenizerExample.StringtoReplace(orignalString));
+	}
+
+}

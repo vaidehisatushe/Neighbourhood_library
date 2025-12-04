@@ -1,0 +1,9 @@
+package com.example.demo;
+
+public class MyFirstClass {
+
+	public MyFirstClass() {
+		// TODO Auto-generated constructor stub
+	}
+
+}

@@ -1,0 +1,32 @@
+package entity;
+
+import java.time.LocalDateTime;
+
+import org.hibernate.annotations.Table;
+import org.hibernate.type.EnumType;
+import org.springframework.data.annotation.Id;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import lombok.Data;
+
+//src/main/java/com/example/parcel/entity/Parcel.java
+@Entity
+@Data
+@Table(name = "parcels")
+public class Parcel {
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
+	private String trackingNumber;
+	private String customerName;
+	private String address;
+	@Enumerated(EnumType.STRING)
+	private ParcelStatus status;
+	private LocalDateTime createdAt;
+	// Getters, setters, constructors
+}
+
+

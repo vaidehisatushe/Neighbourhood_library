@@ -1,0 +1,58 @@
+/**
+ * 
+ */
+package java_core_interview_practice;
+
+/**
+ * 
+ */
+public class CharacterCount {
+
+	/**
+	 * 
+	 */
+	public CharacterCount() {
+		// TODO Auto-generated constructor stub
+	}
+
+	public static int countCharacters(String str, char ch) {
+		int count = 0;
+		for (int i = 0; i < str.length(); i++) {
+			if (str.charAt(i) == ch) {
+				count++;
+			}
+		}
+		return count;
+	}
+
+	public static int countCharactersRecursive(String str, char ch) {
+		return countCharactersHelper(str, ch, 0);
+	}
+
+	public static int countCharactersHelper(String str, char ch, int index) {
+		if (index >= str.length()) {
+			return 0;
+		}
+		int count = (str.charAt(index) == ch) ? 1 : 0;
+		return count + countCharactersHelper(str, ch, index + 1);
+	}
+
+	public static int countCharactersUsingStreams(String str, char ch) {
+		return (int) str.chars().filter(c -> c == ch).count();
+	}
+	
+	public static int countCharactersUsingMap(String str, char ch) {
+		return str.chars()
+				  .mapToObj(c -> (char) c)
+				  .reduce(0, (count, c) -> c == ch ? count + 1 : count, Integer::sum);
+	}
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		String str = "hello world";
+		System.out.println("Number of 'o' in \"" + str + "\": " + countCharactersUsingStreams(str, 'o'));
+	}
+
+}

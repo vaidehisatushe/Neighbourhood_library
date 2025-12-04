@@ -1,0 +1,23 @@
+package entity;
+
+//src/main/java/com/example/parcel/entity/Parcel.java
+@Entity
+@Table(name = "parcels")
+public class Parcel {
+ @Id
+ @GeneratedValue(strategy = GenerationType.IDENTITY)
+ private Long id;
+ private String trackingNumber;
+ private String customerName;
+ private String address;
+ @Enumerated(EnumType.STRING)
+ private ParcelStatus status;
+ private LocalDateTime createdAt;
+ // Getters, setters, constructors
+}
+
+//src/main/java/com/example/parcel/entity/ParcelStatus.java
+public enum ParcelStatus {
+ BOOKED, PICKED_UP, IN_TRANSIT, OUT_FOR_DELIVERY, DELIVERED
+}
+

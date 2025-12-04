@@ -1,0 +1,68 @@
+/**Anagram: {"Listen", "slient"]
+ * 
+ */
+package java_core_interview_practice;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * 
+ */
+public class AnagramString {
+
+	/**
+	 * 
+	 */
+	public AnagramString() {
+		// TODO Auto-generated constructor stub
+	}
+
+	public static boolean isAnagram(String input1, String input2) {
+
+		HashMap<Character, Integer> charCount = new HashMap<Character, Integer>();
+
+		if (input1.length() != input2.length())
+			return false;
+
+		for (char c : input1.toCharArray()) {
+			charCount.put(c, charCount.getOrDefault(c, 0) + 1);
+
+		}
+		for (char c : input2.toCharArray()) {
+			if (!charCount.containsKey(c) || charCount.get(c) == 0) {
+				return false;
+			}
+			charCount.put(c, charCount.get(c) - 1);
+		}
+		return true;
+	}
+
+	/**
+	 * @param args
+	 */
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+
+		AnagramString anagramString = new AnagramString();
+		
+		String input1 = "apple";
+		
+		Map<Character, Integer> characterCount = input1.chars()
+				.mapToObj(c->(char)(c))
+				.collect(Collectors.groupingBy(c->c,Collectors.counting()));
+		
+		characterCount.forEach(key,value) -> System.out.println(key + ""+ value);
+		
+		
+		
+		String input2 = "slient";
+	    boolean isAnagramString  = anagramString.isAnagram(input1, input2);
+	    
+	   System.out.println("Given two String are Aragram "+ isAnagramString);
+
+	}
+
+}

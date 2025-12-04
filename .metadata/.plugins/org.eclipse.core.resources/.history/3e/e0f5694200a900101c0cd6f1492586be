@@ -1,0 +1,13 @@
+package dto;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+
+@Data // Combines @Getter, @Setter, @RequiredArgsConstructor, @ToString, @EqualsAndHashCode
+@NoArgsConstructor // Generates a no-argument constructor
+@AllArgsConstructor // Generates a constructor with all fields as arguments
+public class ParcelRequest {
+    private String customerName;
+    private String address;
+    // Getters, setters
+}

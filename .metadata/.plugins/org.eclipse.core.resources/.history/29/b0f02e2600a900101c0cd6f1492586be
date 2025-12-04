@@ -1,0 +1,5 @@
+package com.example.parcel.entity;
+
+public enum asda {
+
+}
