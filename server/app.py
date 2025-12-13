@@ -56,6 +56,11 @@ class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
             val = validators.BookCreate(**data)
             row = books_svc.create_book(val.dict())
             return library_pb2.CreateBookResponse(book=self._row_to_book(row))
+        except ValueError as e:
+            if str(e) == 'ALREADY_EXISTS':
+                context.set_code(grpc.StatusCode.ALREADY_EXISTS); context.set_details('Book already exists (ISBN check)'); return library_pb2.CreateBookResponse()
+            logger.exception('CreateBook failed') # Log unexpected ValueErrors
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT); context.set_details(str(e)); return library_pb2.CreateBookResponse()
         except Exception as e:
             logger.exception('CreateBook failed')
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT); context.set_details(str(e)); return library_pb2.CreateBookResponse()
@@ -68,18 +73,26 @@ class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
             if not row:
                 context.set_code(grpc.StatusCode.NOT_FOUND); context.set_details('Book not found'); return library_pb2.UpdateBookResponse()
             return library_pb2.UpdateBookResponse(book=self._row_to_book(row))
+        except ValueError as e:
+            if str(e) == 'ALREADY_EXISTS':
+                context.set_code(grpc.StatusCode.ALREADY_EXISTS); context.set_details('Book with this ISBN already exists'); return library_pb2.UpdateBookResponse()
+            logger.exception('UpdateBook failed'); context.set_code(grpc.StatusCode.INVALID_ARGUMENT); context.set_details(str(e)); return library_pb2.UpdateBookResponse()
         except Exception as e:
             logger.exception('UpdateBook failed')
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT); context.set_details(str(e)); return library_pb2.UpdateBookResponse()
 
     def DeleteBook(self, request, context):
         try:
-            book_id = request.id
+            book_id = request.book_id
             deleted = books_svc.delete_book(book_id)
             if not deleted:
                 context.set_code(grpc.StatusCode.NOT_FOUND); context.set_details('Book not found'); return library_pb2.DeleteBookResponse(success=False, message='Not found')
             return library_pb2.DeleteBookResponse(success=True, message='Deleted')
         except Exception as e:
+            if str(e) == 'CANNOT_DELETE_BORROWED':
+                context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
+                context.set_details('Cannot delete book that is currently borrowed')
+                return library_pb2.DeleteBookResponse(success=False, message='Book is borrowed')
             logger.exception('DeleteBook failed')
             context.set_code(grpc.StatusCode.INTERNAL); context.set_details(str(e)); return library_pb2.DeleteBookResponse(success=False, message=str(e))
 
@@ -89,6 +102,10 @@ class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
             val = validators.MemberCreate(**data)
             row = members_svc.create_member(val.dict())
             return library_pb2.CreateMemberResponse(member=self._row_to_member(row))
+        except ValueError as e:
+            if str(e) == 'ALREADY_EXISTS':
+                context.set_code(grpc.StatusCode.ALREADY_EXISTS); context.set_details('Member already exists (Email/Phone check)'); return library_pb2.CreateMemberResponse()
+            logger.exception('CreateMember failed'); context.set_code(grpc.StatusCode.INVALID_ARGUMENT); context.set_details(str(e)); return library_pb2.CreateMemberResponse()
         except Exception as e:
             logger.exception('CreateMember failed')
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT); context.set_details(str(e)); return library_pb2.CreateMemberResponse()
@@ -101,9 +118,28 @@ class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
             if not row:
                 context.set_code(grpc.StatusCode.NOT_FOUND); context.set_details('Member not found'); return library_pb2.UpdateMemberResponse()
             return library_pb2.UpdateMemberResponse(member=self._row_to_member(row))
+        except ValueError as e:
+            if str(e) == 'ALREADY_EXISTS':
+                context.set_code(grpc.StatusCode.ALREADY_EXISTS); context.set_details('Member email/phone already exists'); return library_pb2.UpdateMemberResponse()
+            logger.exception('UpdateMember failed'); context.set_code(grpc.StatusCode.INVALID_ARGUMENT); context.set_details(str(e)); return library_pb2.UpdateMemberResponse()
         except Exception as e:
             logger.exception('UpdateMember failed')
             context.set_code(grpc.StatusCode.INVALID_ARGUMENT); context.set_details(str(e)); return library_pb2.UpdateMemberResponse()
+
+    def DeleteMember(self, request, context):
+        try:
+            member_id = request.member_id
+            deleted = members_svc.delete_member(member_id)
+            if not deleted:
+                context.set_code(grpc.StatusCode.NOT_FOUND); context.set_details('Member not found'); return library_pb2.DeleteMemberResponse(success=False)
+            return library_pb2.DeleteMemberResponse(success=True)
+        except Exception as e:
+            if str(e) == 'CANNOT_DELETE_MEMBER_WITH_BORROWINGS':
+                context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
+                context.set_details('Cannot delete member with active borrowings')
+                return library_pb2.DeleteMemberResponse(success=False)
+            logger.exception('DeleteMember failed')
+            context.set_code(grpc.StatusCode.INTERNAL); context.set_details(str(e)); return library_pb2.DeleteMemberResponse(success=False)
 
     def BorrowBook(self, request, context):
         try:

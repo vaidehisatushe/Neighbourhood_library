@@ -6,11 +6,12 @@ COPY server/requirements.txt ./
 # Install grpcio-tools so we can generate code at build time
 RUN pip install --no-cache-dir grpcio-tools
 RUN pip install --no-cache-dir -r requirements.txt
-COPY server/ .
+COPY server/ ./server/
 COPY protos/ ../protos/
 # Generate protobuf python files at build time
 RUN python -m grpc_tools.protoc -I../protos --python_out=. --grpc_python_out=. ../protos/library.proto || true
 ENV DATABASE_URL=postgresql://postgres:postgres@db:5432/library
 EXPOSE 50051 8081
 # Use wait-for-db.sh to ensure DB is ready before starting
-CMD ["./wait-for-db.sh", "python", "app.py"]
+RUN chmod +x ./server/wait-for-db.sh && sed -i 's/\r$//' ./server/wait-for-db.sh
+CMD ["./server/wait-for-db.sh", "python", "-m", "server.app"]

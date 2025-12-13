@@ -50,5 +50,5 @@ def return_book(borrowing_id):
 def list_borrowed_by_member(member_id):
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT * FROM borrowings WHERE member_id=%s AND status='BORROWED'", (member_id,))
-        return cur.fetchall()
+            cur.execute("SELECT * FROM borrowings WHERE member_id=%s ORDER BY borrowed_at DESC", (member_id,))
+            return cur.fetchall()

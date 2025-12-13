@@ -35,12 +35,14 @@ message CreateBookResponse { Book book = 1; }
 message UpdateBookRequest { Book book = 1; }
 message UpdateBookResponse { Book book = 1; }
 message DeleteBookRequest { int32 book_id = 1; }
-message DeleteBookResponse { bool success = 1; }
+message DeleteBookResponse { bool success = 1; string message = 2; }
 
 message CreateMemberRequest { Member member = 1; }
 message CreateMemberResponse { Member member = 1; }
 message UpdateMemberRequest { Member member = 1; }
 message UpdateMemberResponse { Member member = 1; }
+message DeleteMemberRequest { int32 member_id = 1; }
+message DeleteMemberResponse { bool success = 1; }
 
 message BorrowBookRequest { int32 book_id = 1; int32 member_id = 2; google.protobuf.Timestamp due_at = 3; }
 message BorrowBookResponse { Borrowing borrowing = 1; }
@@ -57,12 +59,17 @@ message ListBooksResponse { repeated Book books = 1; }
 message ListMembersRequest { }
 message ListMembersResponse { repeated Member members = 1; }
 
+message GetMemberRequest { int32 id = 1; }
+message GetMemberResponse { Member member = 1; }
+
 service LibraryService {
   rpc CreateBook(CreateBookRequest) returns (CreateBookResponse);
   rpc UpdateBook(UpdateBookRequest) returns (UpdateBookResponse);
   rpc DeleteBook(DeleteBookRequest) returns (DeleteBookResponse);
   rpc CreateMember(CreateMemberRequest) returns (CreateMemberResponse);
   rpc UpdateMember(UpdateMemberRequest) returns (UpdateMemberResponse);
+  rpc DeleteMember(DeleteMemberRequest) returns (DeleteMemberResponse);
+  rpc GetMember(GetMemberRequest) returns (GetMemberResponse);
   rpc BorrowBook(BorrowBookRequest) returns (BorrowBookResponse);
   rpc ReturnBook(ReturnBookRequest) returns (ReturnBookResponse);
   rpc ListBorrowedByMember(ListBorrowedByMemberRequest) returns (ListBorrowedByMemberResponse);
