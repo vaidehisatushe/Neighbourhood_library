@@ -3,4 +3,7 @@ grpcio-tools
 protobuf
 psycopg2-binary
 python-dateutil
-Flask
+pydantic
+python-json-logger
+flask
+email-validator

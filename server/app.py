@@ -1,72 +1,38 @@
 #!/usr/bin/env python3
-"""Python gRPC server for Neighborhood Library Service with connection pooling and HTTP health endpoint.
-
-- Uses psycopg2.pool.SimpleConnectionPool for DB connections.
-- Starts a small Flask app in a background thread to serve /health HTTP endpoint for Docker healthchecks.
-- Each RPC method obtains a connection from the pool, uses it, and returns it.
-"""
-import os
-import time
+import os, time
 from concurrent import futures
 import grpc
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from psycopg2 import pool
 from google.protobuf.timestamp_pb2 import Timestamp
 from threading import Thread
 from flask import Flask, jsonify
-
-try:
-    import library_pb2
-    import library_pb2_grpc
-except Exception:
-    raise ImportError("Run server/generate_protos.sh to generate library_pb2.py and library_pb2_grpc.py from protos/library.proto")
+from server.logger import get_logger
+from server.db import init_pool, get_conn
+import server.services.books as books_svc
+import server.services.members as members_svc
+import server.services.borrowings as borrows_svc
+import server.validators as validators
+import library_pb2, library_pb2_grpc
+logger = get_logger('server')
 
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@db:5432/library')
-DB_MINCONN = int(os.environ.get('DB_MINCONN', '1'))
-DB_MAXCONN = int(os.environ.get('DB_MAXCONN', '5'))
 
-# Simple Flask health app
 health_app = Flask(__name__)
 
 @health_app.route('/health')
 def health():
-    # basic health: check pool and optionally a lightweight DB check
     try:
-        if pool_instance is None:
-            return jsonify({'status':'down', 'reason':'no-pool'}), 500
-        conn = pool_instance.getconn()
-        try:
-            cur = conn.cursor()
-            cur.execute('SELECT 1')
-            cur.fetchone()
-        finally:
-            pool_instance.putconn(conn)
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute('SELECT 1')
+                cur.fetchone()
         return jsonify({'status':'ok'})
     except Exception as e:
-        return jsonify({'status':'down', 'reason': str(e)}), 500
-
-pool_instance = None
+        logger.exception('health check failed')
+        return jsonify({'status':'down', 'error': str(e)}), 500
 
 class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
-    """Implements the LibraryService using a connection pool."""
-    def __init__(self, pool):
-        self.pool = pool
-
-    def _get_conn(self):
-        return self.pool.getconn()
-
-    def _put_conn(self, conn):
-        self.pool.putconn(conn)
-
     def _row_to_book(self, row):
-        b = library_pb2.Book(
-            id=row['id'],
-            isbn=row.get('isbn') or '',
-            title=row['title'],
-            author=row.get('author') or '',
-            publisher=row.get('publisher') or ''
-        )
+        b = library_pb2.Book(id=row['id'], isbn=row.get('isbn') or '', title=row['title'], author=row.get('author') or '', publisher=row.get('publisher') or '')
         if row.get('published_date'):
             ts = Timestamp(); ts.FromDatetime(row['published_date']); b.published_date.CopyFrom(ts)
         return b
@@ -85,155 +51,169 @@ class LibraryServicer(library_pb2_grpc.LibraryServiceServicer):
         return bor
 
     def CreateBook(self, request, context):
-        """Insert a new book and return it."""
-        b = request.book
-        conn = self._get_conn()
         try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("INSERT INTO books(isbn, title, author, publisher, published_date, created_at, updated_at) VALUES (%s,%s,%s,%s,%s, now(), now()) RETURNING *",
-                            (b.isbn or None, b.title, b.author or None, b.publisher or None, b.published_date.ToDatetime() if b.HasField('published_date') else None))
-                row = cur.fetchone()
-                conn.commit()
-                return library_pb2.CreateBookResponse(book=self._row_to_book(row))
-        finally:
-            self._put_conn(conn)
+            data = { 'title': request.book.title, 'author': request.book.author, 'isbn': request.book.isbn, 'publisher': request.book.publisher }
+            val = validators.BookCreate(**data)
+            row = books_svc.create_book(val.dict())
+            return library_pb2.CreateBookResponse(book=self._row_to_book(row))
+        except ValueError as e:
+            if str(e) == 'ALREADY_EXISTS':
+                context.set_code(grpc.StatusCode.ALREADY_EXISTS); context.set_details('Book already exists (ISBN check)'); return library_pb2.CreateBookResponse()
+            logger.exception('CreateBook failed') # Log unexpected ValueErrors
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT); context.set_details(str(e)); return library_pb2.CreateBookResponse()
+        except Exception as e:
+            logger.exception('CreateBook failed')
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT); context.set_details(str(e)); return library_pb2.CreateBookResponse()
 
     def UpdateBook(self, request, context):
-        """Update an existing book identified by id."""
-        b = request.book
-        conn = self._get_conn()
         try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("UPDATE books SET isbn=%s, title=%s, author=%s, publisher=%s, published_date=%s, updated_at=now() WHERE id=%s RETURNING *",
-                            (b.isbn or None, b.title, b.author or None, b.publisher or None, b.published_date.ToDatetime() if b.HasField('published_date') else None, b.id))
-                row = cur.fetchone()
-                if not row:
-                    context.set_code(grpc.StatusCode.NOT_FOUND); context.set_details('Book not found'); return library_pb2.UpdateBookResponse()
-                conn.commit()
-                return library_pb2.UpdateBookResponse(book=self._row_to_book(row))
-        finally:
-            self._put_conn(conn)
+            data = { 'id': request.book.id, 'title': request.book.title, 'author': request.book.author, 'isbn': request.book.isbn, 'publisher': request.book.publisher }
+            val = validators.BookUpdate(**data)
+            row = books_svc.update_book(val.dict())
+            if not row:
+                context.set_code(grpc.StatusCode.NOT_FOUND); context.set_details('Book not found'); return library_pb2.UpdateBookResponse()
+            return library_pb2.UpdateBookResponse(book=self._row_to_book(row))
+        except ValueError as e:
+            if str(e) == 'ALREADY_EXISTS':
+                context.set_code(grpc.StatusCode.ALREADY_EXISTS); context.set_details('Book with this ISBN already exists'); return library_pb2.UpdateBookResponse()
+            logger.exception('UpdateBook failed'); context.set_code(grpc.StatusCode.INVALID_ARGUMENT); context.set_details(str(e)); return library_pb2.UpdateBookResponse()
+        except Exception as e:
+            logger.exception('UpdateBook failed')
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT); context.set_details(str(e)); return library_pb2.UpdateBookResponse()
+
+    def DeleteBook(self, request, context):
+        try:
+            book_id = request.book_id
+            deleted = books_svc.delete_book(book_id)
+            if not deleted:
+                context.set_code(grpc.StatusCode.NOT_FOUND); context.set_details('Book not found'); return library_pb2.DeleteBookResponse(success=False, message='Not found')
+            return library_pb2.DeleteBookResponse(success=True, message='Deleted')
+        except Exception as e:
+            if str(e) == 'CANNOT_DELETE_BORROWED':
+                context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
+                context.set_details('Cannot delete book that is currently borrowed')
+                return library_pb2.DeleteBookResponse(success=False, message='Book is borrowed')
+            logger.exception('DeleteBook failed')
+            context.set_code(grpc.StatusCode.INTERNAL); context.set_details(str(e)); return library_pb2.DeleteBookResponse(success=False, message=str(e))
 
     def CreateMember(self, request, context):
-        """Insert a new member and return it."""
-        m = request.member
-        conn = self._get_conn()
         try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("INSERT INTO members(name,email,phone,address,created_at,updated_at) VALUES (%s,%s,%s,%s,now(),now()) RETURNING *",
-                            (m.name, m.email or None, m.phone or None, m.address or None))
-                row = cur.fetchone(); conn.commit(); return library_pb2.CreateMemberResponse(member=self._row_to_member(row))
-        finally:
-            self._put_conn(conn)
+            data = {'name': request.member.name, 'email': request.member.email, 'phone': request.member.phone, 'address': request.member.address}
+            val = validators.MemberCreate(**data)
+            row = members_svc.create_member(val.dict())
+            return library_pb2.CreateMemberResponse(member=self._row_to_member(row))
+        except ValueError as e:
+            if str(e) == 'ALREADY_EXISTS':
+                context.set_code(grpc.StatusCode.ALREADY_EXISTS); context.set_details('Member already exists (Email/Phone check)'); return library_pb2.CreateMemberResponse()
+            logger.exception('CreateMember failed'); context.set_code(grpc.StatusCode.INVALID_ARGUMENT); context.set_details(str(e)); return library_pb2.CreateMemberResponse()
+        except Exception as e:
+            logger.exception('CreateMember failed')
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT); context.set_details(str(e)); return library_pb2.CreateMemberResponse()
 
     def UpdateMember(self, request, context):
-        """Update a member record."""
-        m = request.member
-        conn = self._get_conn()
         try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("UPDATE members SET name=%s,email=%s,phone=%s,address=%s,updated_at=now() WHERE id=%s RETURNING *",
-                            (m.name, m.email or None, m.phone or None, m.address or None, m.id))
-                row = cur.fetchone()
-                if not row:
-                    context.set_code(grpc.StatusCode.NOT_FOUND); context.set_details('Member not found'); return library_pb2.UpdateMemberResponse()
-                conn.commit(); return library_pb2.UpdateMemberResponse(member=self._row_to_member(row))
-        finally:
-            self._put_conn(conn)
+            data = {'id': request.member.id, 'name': request.member.name, 'email': request.member.email, 'phone': request.member.phone, 'address': request.member.address}
+            val = validators.MemberUpdate(**data)
+            row = members_svc.update_member(val.dict())
+            if not row:
+                context.set_code(grpc.StatusCode.NOT_FOUND); context.set_details('Member not found'); return library_pb2.UpdateMemberResponse()
+            return library_pb2.UpdateMemberResponse(member=self._row_to_member(row))
+        except ValueError as e:
+            if str(e) == 'ALREADY_EXISTS':
+                context.set_code(grpc.StatusCode.ALREADY_EXISTS); context.set_details('Member email/phone already exists'); return library_pb2.UpdateMemberResponse()
+            logger.exception('UpdateMember failed'); context.set_code(grpc.StatusCode.INVALID_ARGUMENT); context.set_details(str(e)); return library_pb2.UpdateMemberResponse()
+        except Exception as e:
+            logger.exception('UpdateMember failed')
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT); context.set_details(str(e)); return library_pb2.UpdateMemberResponse()
+
+    def DeleteMember(self, request, context):
+        try:
+            member_id = request.member_id
+            deleted = members_svc.delete_member(member_id)
+            if not deleted:
+                context.set_code(grpc.StatusCode.NOT_FOUND); context.set_details('Member not found'); return library_pb2.DeleteMemberResponse(success=False)
+            return library_pb2.DeleteMemberResponse(success=True)
+        except Exception as e:
+            if str(e) == 'CANNOT_DELETE_MEMBER_WITH_BORROWINGS':
+                context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
+                context.set_details('Cannot delete member with active borrowings')
+                return library_pb2.DeleteMemberResponse(success=False)
+            logger.exception('DeleteMember failed')
+            context.set_code(grpc.StatusCode.INTERNAL); context.set_details(str(e)); return library_pb2.DeleteMemberResponse(success=False)
 
     def BorrowBook(self, request, context):
-        """Create a borrowing record after validating book & member and ensuring no active borrow."""
-        conn = self._get_conn()
         try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute('SELECT id FROM books WHERE id=%s', (request.book_id,))
-                book = cur.fetchone()
-                if not book:
-                    context.set_code(grpc.StatusCode.NOT_FOUND); context.set_details('Book not found'); return library_pb2.BorrowBookResponse()
-                cur.execute('SELECT id FROM members WHERE id=%s', (request.member_id,))
-                member = cur.fetchone()
-                if not member:
-                    context.set_code(grpc.StatusCode.NOT_FOUND); context.set_details('Member not found'); return library_pb2.BorrowBookResponse()
-                cur.execute("SELECT * FROM borrowings WHERE book_id=%s AND status='BORROWED'", (request.book_id,))
-                active = cur.fetchone()
-                if active:
-                    context.set_code(grpc.StatusCode.FAILED_PRECONDITION); context.set_details('Book already borrowed'); return library_pb2.BorrowBookResponse()
-                due = request.due_at.ToDatetime() if request.HasField('due_at') else None
-                cur.execute('INSERT INTO borrowings(book_id, member_id, borrowed_at, due_at, status) VALUES (%s,%s,now(),%s,%s) RETURNING *', (request.book_id, request.member_id, due, 'BORROWED'))
-                row = cur.fetchone(); conn.commit(); return library_pb2.BorrowBookResponse(borrowing=self._row_to_borrowing(row))
-        finally:
-            self._put_conn(conn)
+            val = validators.BorrowRequest(book_id=request.book_id, member_id=request.member_id)
+            row, err = borrows_svc.borrow_book(val.book_id, val.member_id, val.due_at)
+            if err:
+                if err == 'BOOK_NOT_FOUND': context.set_code(grpc.StatusCode.NOT_FOUND); context.set_details('Book not found'); return library_pb2.BorrowBookResponse()
+                if err == 'MEMBER_NOT_FOUND': context.set_code(grpc.StatusCode.NOT_FOUND); context.set_details('Member not found'); return library_pb2.BorrowBookResponse()
+                if err == 'ALREADY_BORROWED': context.set_code(grpc.StatusCode.FAILED_PRECONDITION); context.set_details('Book already borrowed'); return library_pb2.BorrowBookResponse()
+            return library_pb2.BorrowBookResponse(borrowing=self._row_to_borrowing(row))
+        except Exception as e:
+            logger.exception('BorrowBook failed')
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT); context.set_details(str(e)); return library_pb2.BorrowBookResponse()
 
     def ReturnBook(self, request, context):
-        """Mark a borrowing as returned."""
-        conn = self._get_conn()
         try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute('SELECT * FROM borrowings WHERE id=%s', (request.borrowing_id,))
-                row = cur.fetchone()
-                if not row:
-                    context.set_code(grpc.StatusCode.NOT_FOUND); context.set_details('Borrowing record not found'); return library_pb2.ReturnBookResponse()
-                if row['status'] != 'BORROWED':
-                    context.set_code(grpc.StatusCode.FAILED_PRECONDITION); context.set_details('Already returned'); return library_pb2.ReturnBookResponse()
-                cur.execute("UPDATE borrowings SET returned_at=now(), status='RETURNED' WHERE id=%s RETURNING *", (request.borrowing_id,))
-                updated = cur.fetchone(); conn.commit(); return library_pb2.ReturnBookResponse(borrowing=self._row_to_borrowing(updated))
-        finally:
-            self._put_conn(conn)
+            val = validators.ReturnRequest(borrowing_id=request.borrowing_id)
+            row, err = borrows_svc.return_book(val.borrowing_id)
+            if err:
+                if err == 'NOT_FOUND': context.set_code(grpc.StatusCode.NOT_FOUND); context.set_details('Borrowing not found'); return library_pb2.ReturnBookResponse()
+                if err == 'ALREADY_RETURNED': context.set_code(grpc.StatusCode.FAILED_PRECONDITION); context.set_details('Already returned'); return library_pb2.ReturnBookResponse()
+            return library_pb2.ReturnBookResponse(borrowing=self._row_to_borrowing(row))
+        except Exception as e:
+            logger.exception('ReturnBook failed')
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT); context.set_details(str(e)); return library_pb2.ReturnBookResponse()
 
     def ListBorrowedByMember(self, request, context):
-        """List active borrowings for a member."""
-        conn = self._get_conn()
         try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute("SELECT * FROM borrowings WHERE member_id=%s AND status='BORROWED'", (request.member_id,))
-                rows = cur.fetchall(); borrows = [self._row_to_borrowing(r) for r in rows]; return library_pb2.ListBorrowedByMemberResponse(borrowings=borrows)
-        finally:
-            self._put_conn(conn)
-
-    def ListMembers(self, request, context):
-        """Return all members (no pagination)."""
-        conn = self._get_conn()
-        try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute('SELECT * FROM members ORDER BY id')
-                rows = cur.fetchall()
-                members = [self._row_to_member(r) for r in rows]
-                return library_pb2.ListMembersResponse(members=members)
-        finally:
-            self._put_conn(conn)
+            rows = borrows_svc.list_borrowed_by_member(request.member_id)
+            borrows = [self._row_to_borrowing(r) for r in rows]
+            return library_pb2.ListBorrowedByMemberResponse(borrowings=borrows)
+        except Exception as e:
+            logger.exception('ListBorrowedByMember failed')
+            context.set_code(grpc.StatusCode.INTERNAL); context.set_details(str(e)); return library_pb2.ListBorrowedByMemberResponse()
 
     def ListBooks(self, request, context):
-        """Return all books (no pagination)."""
-        conn = self._get_conn()
         try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute('SELECT * FROM books ORDER BY id')
-                rows = cur.fetchall(); books = [self._row_to_book(r) for r in rows]; return library_pb2.ListBooksResponse(books=books)
-        finally:
-            self._put_conn(conn)
+            rows = books_svc.list_books()
+            books = [self._row_to_book(r) for r in rows]
+            return library_pb2.ListBooksResponse(books=books)
+        except Exception as e:
+            logger.exception('ListBooks failed')
+            context.set_code(grpc.StatusCode.INTERNAL); context.set_details(str(e)); return library_pb2.ListBooksResponse()
 
-def start_health_server():
-    # Run Flask health app on port 8081
-    health_app.run(host='0.0.0.0', port=8081)
+    def ListMembers(self, request, context):
+        try:
+            rows = members_svc.list_members()
+            members = [library_pb2.Member(id=r['id'], name=r['name'], email=r.get('email') or '', phone=r.get('phone') or '', address=r.get('address') or '') for r in rows]
+            return library_pb2.ListMembersResponse(members=members)
+        except Exception as e:
+            logger.exception('ListMembers failed')
+            context.set_code(grpc.StatusCode.INTERNAL); context.set_details(str(e)); return library_pb2.ListMembersResponse()
+
+    def GetMember(self, request, context):
+        try:
+            r = members_svc.get_member(request.id)
+            if not r:
+                context.set_code(grpc.StatusCode.NOT_FOUND); context.set_details('Member not found'); return library_pb2.GetMemberResponse()
+            m = library_pb2.Member(id=r['id'], name=r['name'], email=r.get('email') or '', phone=r.get('phone') or '', address=r.get('address') or '')
+            return library_pb2.GetMemberResponse(member=m)
+        except Exception as e:
+            logger.exception('GetMember failed')
+            context.set_code(grpc.StatusCode.INTERNAL); context.set_details(str(e)); return library_pb2.GetMemberResponse()
 
 def serve():
-    global pool_instance
-    # Initialize connection pool
-    # DATABASE_URL expected in form postgresql://user:pass@host:port/db
-    dsn = DATABASE_URL
-    # psycopg2 pool expects separate params; using simple connection string is fine for connect
-    pool_instance = psycopg2.pool.SimpleConnectionPool(DB_MINCONN, DB_MAXCONN, dsn)
+    init_pool(minconn=int(os.environ.get('DB_MINCONN',1)), maxconn=int(os.environ.get('DB_MAXCONN',5)))
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    library_pb2_grpc.add_LibraryServiceServicer_to_server(LibraryServicer(pool_instance), server)
+    library_pb2_grpc.add_LibraryServiceServicer_to_server(LibraryServicer(), server)
     port = os.environ.get('GRPC_PORT', '50051')
     server.add_insecure_port(f'[::]:{port}')
-
-    # Start health HTTP server in background thread
-    t = Thread(target=start_health_server, daemon=True)
+    t = Thread(target=lambda: health_app.run(host='0.0.0.0', port=8081), daemon=True)
     t.start()
-
     server.start()
-    print(f'gRPC server started on {port} with HTTP health on 8081')
+    logger.info('gRPC server started', extra={'port':port})
     try:
         while True:
             time.sleep(86400)
