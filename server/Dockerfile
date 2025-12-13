@@ -13,4 +13,5 @@ RUN python -m grpc_tools.protoc -I../protos --python_out=. --grpc_python_out=. .
 ENV DATABASE_URL=postgresql://postgres:postgres@db:5432/library
 EXPOSE 50051 8081
 # Use wait-for-db.sh to ensure DB is ready before starting
+RUN chmod +x ./wait-for-db.sh && sed -i 's/\r$//' ./wait-for-db.sh
 CMD ["./wait-for-db.sh", "python", "app.py"]
